@@ -1,0 +1,27 @@
+# docker compose up --build   →  API on :5000, MongoDB on :27017 (data persisted in a volume)
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes: [mongo-data:/data/db]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      mongo: { condition: service_healthy }
+    ports: ["5000:5000"]
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGODB_URI: mongodb://mongo:27017/admin_panel
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (32+ chars) in your shell or a .env file}
+      SALARY_ENCRYPTION_KEY: ${SALARY_ENCRYPTION_KEY:?set SALARY_ENCRYPTION_KEY (64 hex chars) - needed to encrypt salary slips}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      ENABLE_DOCS: "true"
+volumes:
+  mongo-data:
